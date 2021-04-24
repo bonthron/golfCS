@@ -11,6 +11,14 @@
 // C#
 // .NET Core
 // TargetFramework: netcoreapp 3.1
+//
+// Run source:
+// dotnet run
+//
+// Linux compile:
+// dotnet publish --self-contained -c Release -r linux-x64 /p:PublishSingleFile=true /p:PublishTrimmed=true
+//
+//
 //        
 // INDEX
 // ----------------- methods
