@@ -1,11 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Threading;
+
 
 namespace Golf
 {
     using Ball = Golf.CircleGameObj;
     using Hazard = Golf.CircleGameObj;
+
+    
+    // --------------------------------------------------------------------------- Program
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Golf g = new Golf();
+        }
+    }
 
     
     // --------------------------------------------------------------------------- Golf
@@ -33,10 +45,11 @@ namespace Golf
         static void w(string s) { Console.WriteLine(s); } // WRITE        
         Random RANDOM = new Random();
 
-        
+
         // --------------------------------------------------------------- constructor
         public Golf()
         {
+            Console.Clear();
             w(" ");
             w("          8\"\"\"\"8 8\"\"\"88 8     8\"\"\"\" ");
             w("          8    \" 8    8 8     8     ");
@@ -58,14 +71,15 @@ namespace Golf
             Wait((z) =>
             {
                 w(" ");
+                w("              YOUR BAG");                
                 ReviewBag();
                 w("Type BAG at any time to review the clubs in your bag.");
                 w(" ");
 
                 Wait((zz) =>
                 {
-
                     w(" ");
+                    
                     Ask("PGA handicaps range from 0 to 30.\nWhat is your handicap?", 0, 30, (i) =>
                     {
                         Handicap = i;
@@ -74,6 +88,7 @@ namespace Golf
                         Ask("Common difficulties at golf include:\n1=Hook, 2=Slice, 3=Poor Distance, 4=Trap Shots, 5=Putting\nWhich one is your worst?", 1, 5, (j) =>
                         {
                             PlayerDifficulty = j;
+                            Console.Clear();
                             NewHole();
                         });
                     });
@@ -127,18 +142,20 @@ namespace Golf
 
         // --------------------------------------------------------------- TeeUp
         // on the green? automatically select putter
-        // otherwise pick club and swing strength
+        // otherwise Ask club and swing strength
 
         void TeeUp()
         {
             if (IsOnGreen(BALL) && !IsInHazard(BALL, GameObjType.SAND))
             {
+                var putt = 10;
+                w("PUTTER: average 10 yards");
                 var msg = Odds(20) ? "Keep your head down.\n" : "";
 
                 Ask(msg + "Choose your putt potency. (1-10)", 1, 10, (strength) =>
                 {
-                    var putter = Clubs[10];
-                    Stroke(putter.Item2 * (strength/10), 10);
+                    var putter = Clubs[putt];
+                    Stroke(Convert.ToDouble((double)putter.Item2 * ((double)strength / 10.0)), putt);
                 });
             }
             else
@@ -146,11 +163,13 @@ namespace Golf
                 Ask("What club do you choose? (1-10)", 1, 10, (c) =>
                 {
                     var club = Clubs[c];
-                    w(club.Item1);
+
+                    w(" ");
+                    Console.WriteLine("{0}: average {1} yards", club.Item1.ToUpper(), club.Item2);
 
                     Ask("Now gauge your distance by a percentage of a full swing. (1-10)", 1, 10, (strength) =>
                     {
-                        Stroke(club.Item2 * (strength/10), c);
+                        Stroke(Convert.ToDouble((double)club.Item2 * ((double)strength / 10.0)), c);
                     });
                 });
             };
@@ -158,57 +177,63 @@ namespace Golf
 
 
         // --------------------------------------------------------------- Stroke
-        void Stroke(int clubAmt, int clubIndex) {
-
+        void Stroke(double clubAmt, int clubIndex)
+        {
             STROKE_NUM++;
 
             var flags = 0b000000000000;
 
             // fore! only when driving
-            if((STROKE_NUM == 1) && (clubAmt > 210) && Odds(30)){ w("\"...Fore !\""); };
+            if ((STROKE_NUM == 1) && (clubAmt > 210) && Odds(30)) { w("\"...Fore !\""); };
 
             // dub
-            if(Odds(5)){ flags |= dub; }; // there's always a 5% chance of dubbing it
+            if (Odds(5)) { flags |= dub; }; // there's always a 5% chance of dubbing it
 
             // if you're in the rough, or sand, you really should be using a wedge
-            if((IsInRough(BALL) || IsInHazard(BALL, GameObjType.SAND)) &&
+            if ((IsInRough(BALL) || IsInHazard(BALL, GameObjType.SAND)) &&
                !(clubIndex == 8 || clubIndex == 9))
             {
-                if(Odds(40)){ flags |= dub; };
+                if (Odds(40)) { flags |= dub; };
             };
 
             // trap difficulty
-            if(IsInHazard(BALL, GameObjType.SAND) && PlayerDifficulty == 4)
+            if (IsInHazard(BALL, GameObjType.SAND) && PlayerDifficulty == 4)
             {
-                if(Odds(20)){ flags |= dub; };
+                if (Odds(20)) { flags |= dub; };
             }
-          
+
             // hook/slice
             // There's 10% chance of a hook or slice
             // if it's a known playerDifficulty then increase chance to 30%
             // if it's a putt & putting is a playerDifficulty increase to 30%
-            
+
             bool randHookSlice = (PlayerDifficulty == 1 ||
                                   PlayerDifficulty == 2 ||
                                   (PlayerDifficulty == 5 && IsOnGreen(BALL))) ? Odds(30) : Odds(10);
-            
-            if(randHookSlice){
-                if(PlayerDifficulty == 1){
-                    if(Odds(80)){ flags |= hook; }else{ flags |= slice; };
-                }else if(PlayerDifficulty == 2){
-                    if(Odds(80)){ flags |= slice; }else{ flags |= hook; };
-                }else{
-                    if(Odds(50)){ flags |= hook; }else{ flags |= slice; };
+
+            if (randHookSlice)
+            {
+                if (PlayerDifficulty == 1)
+                {
+                    if (Odds(80)) { flags |= hook; } else { flags |= slice; };
+                }
+                else if (PlayerDifficulty == 2)
+                {
+                    if (Odds(80)) { flags |= slice; } else { flags |= hook; };
+                }
+                else
+                {
+                    if (Odds(50)) { flags |= hook; } else { flags |= slice; };
                 };
             };
 
             // beginner's luck !
             // If handicap is greater than 15, there's a 10% chance of avoiding all errors 
-            if((Handicap > 15) && (Odds(10))){ flags |= luck; w("Perfect swing!"); };
-            
+            if ((Handicap > 15) && (Odds(10))) { flags |= luck; w("Perfect swing!"); };
+
             // ace
             // there's a 10% chance of an Ace on a par 3           
-            if(CourseInfo[HOLE_NUM].Par == 3 && Odds(10) && STROKE_NUM == 1) { flags |= ace; };
+            if (CourseInfo[HOLE_NUM].Par == 3 && Odds(10) && STROKE_NUM == 1) { flags |= ace; };
 
             // distance:
             // If handicap is < 15, there a 50% chance of reaching club average,
@@ -217,61 +242,79 @@ namespace Golf
             // and 75% chance of falling short
             // The greater the handicap, the more the ball falls short
             // If poor distance is a known playerDifficulty, then reduce distance by 10% 
-            
-            int distance;
-            int rnd = RANDOM.Next(1, 100);
-            
-            if(Handicap < 15){
-                if(rnd <= 25){
-                    distance = clubAmt - (clubAmt * (Handicap/100));
-                }else if(rnd > 25 && rnd <= 75){
+
+            double distance;
+            int rnd = RANDOM.Next(1, 101);
+             
+            if (Handicap < 15)
+            {
+                if (rnd <= 25)
+                {
+                    distance = clubAmt - (clubAmt * ((double)Handicap / 100.0));
+                }
+                else if (rnd > 25 && rnd <= 75)
+                {
                     distance = clubAmt;
-                }else{
-                    distance = clubAmt + Convert.ToInt32(clubAmt * 0.10);
+                }
+                else
+                {
+                    distance = clubAmt + (clubAmt * 0.10);
                 };
-            }else{
-                if(rnd <= 75){
-                    distance = clubAmt - (clubAmt * (Handicap/100));
-                }else{
-                    distance = clubAmt;                      
+            }
+            else
+            {
+                if (rnd <= 75)
+                {
+                    distance = clubAmt - (clubAmt * ((double)Handicap / 100.0));
+                }
+                else
+                {
+                    distance = clubAmt;
                 };
             };
-            if(PlayerDifficulty == 3){
-                if(Odds(80)){ distance = Convert.ToInt32(distance * 0.10); };
+
+            if (PlayerDifficulty == 3)
+            {
+                if (Odds(80)) { distance = (distance * 0.10); };
             };
-            
-            if((flags & luck) == 1){ distance = clubAmt; }
-            
+
+            if ((flags & luck) == luck) { distance = clubAmt; }
+
             // angle
             // For all strokes, there's a possible "drift" of 4 degrees 
             // a hooks or slice increases the angle between 5-10 degrees, hook uses negative degrees
-            int angle = RANDOM.Next(0, 4);
-            if((flags & slice) == 1){ angle = RANDOM.Next(5, 10); };
-            if((flags & hook) == 1 ){ angle = 0 - RANDOM.Next(5, 10); };
-            if((flags & luck) == 1 ){ angle = 0; };
-            
-            var plot = PlotBall(BALL, distance, angle);  // calculate a new location
+            int angle = RANDOM.Next(0, 5);
+            if ((flags & slice) == slice) { angle = RANDOM.Next(5, 11); };
+            if ((flags & hook) == hook) { angle = 0 - RANDOM.Next(5, 11); };
+            if ((flags & luck) == luck) { angle = 0; };
 
-            
+            var plot = PlotBall(BALL, distance, Convert.ToDouble(angle));  // calculate a new location
+
+            flags = FindBall(new Ball(plot.X, plot.Y, 0, GameObjType.BALL), flags);
+
+            InterpretResults(plot, flags);
         }
 
 
         // --------------------------------------------------------------- plotBall
-        Plot PlotBall(Ball ball, int strokeDistance, int degreesOff)
+        Plot PlotBall(Ball ball, double strokeDistance, double degreesOff)
         {
-            var cupVector = new Point(0, 1); 
-            var radFromCup = Math.Atan2(ball.Y, ball.X) - Math.Atan2(cupVector.Y, cupVector.X);
-            var radFromBall = radFromCup - Math.PI;
+            var cupVector = new Point(0, -1);
+            double radFromCup = Math.Atan2((double)ball.Y, (double)ball.X) - Math.Atan2((double)cupVector.Y, (double)cupVector.X);
+            double radFromBall = radFromCup - Math.PI;
 
             var hypotenuse = strokeDistance;
             var adjacent = Math.Cos(radFromBall + ToRadians(degreesOff)) * hypotenuse;
             var opposite = Math.Sqrt(Math.Pow(hypotenuse, 2) - Math.Pow(adjacent, 2));
 
             Point newPos;
-            if(ToDegrees360(radFromBall + ToRadians(degreesOff)) > 180){
+            if (ToDegrees360(radFromBall + ToRadians(degreesOff)) > 180)
+            {
                 newPos = new Point(Convert.ToInt32(ball.X - opposite),
                                    Convert.ToInt32(ball.Y - adjacent));
-            }else{
+            }
+            else
+            {
                 newPos = new Point(Convert.ToInt32(ball.X + opposite),
                                    Convert.ToInt32(ball.Y - adjacent));
             }
@@ -280,144 +323,216 @@ namespace Golf
         }
 
 
+        // --------------------------------------------------------------- InterpretResults
+        void InterpretResults(Plot plot, int flags)
+        {
+            int cupDistance = Convert.ToInt32(GetDistance(new Point(plot.X, plot.Y),
+                                                          new Point(holeGeometry.Cup.X, holeGeometry.Cup.Y)));
+            int travelDistance = Convert.ToInt32(GetDistance(new Point(plot.X, plot.Y),
+                                                             new Point(BALL.X, BALL.Y)));
 
-        /*
-      function stroke(clubAmt, clubIndex){
+            w(" ");
+
+            if ((flags & ace) == ace)
+            {
+                w("Hole in One! You aced it.");
+                ScoreCardRecordStroke(new Ball(0, 0, 0, GameObjType.BALL));
+                ReportCurrentScore();
+                return;
+            };
+
+            if ((flags & inTrees) == inTrees)
+            {
+                w("Your ball is lost in the trees. Take a penalty stroke.");
+                ScoreCardRecordStroke(BALL);
+                TeeUp();
+                return;
+            };
+
+            if ((flags & inWater) == inWater)
+            {
+                var msg = Odds(50) ? "Your ball has gone to a watery grave." : "Your ball is lost in the water.";
+                w(msg + " Take a penalty stroke.");
+                ScoreCardRecordStroke(BALL);
+                TeeUp();
+                return;
+            };
+
+            if ((flags & outOfBounds) == outOfBounds)
+            {
+                w("Out of bounds. Take a penalty stroke.");
+                ScoreCardRecordStroke(BALL);
+                TeeUp();
+                return;
+            };
+
+            if ((flags & dub) == dub)
+            {
+                w("You dubbed it.");
+                ScoreCardRecordStroke(BALL);
+                TeeUp();
+                return;
+            };
+
+            if ((flags & inCup) == inCup)
+            {
+                var msg = Odds(50) ? "You holed it." : "It's in!";
+                w(msg);
+                ScoreCardRecordStroke(new Ball(plot.X, plot.Y, 0, GameObjType.BALL));
+                ReportCurrentScore();
+                return;
+            };
+
+            if (((flags & slice) == slice) &&
+               !((flags & onGreen) == onGreen))
+            {
+                var bad = ((flags & outOfBounds) == outOfBounds) ? " badly" : "";
+                Console.WriteLine("You sliced{0}: {1} yards offline.", bad, plot.Offline);
+            };
+
+            if (((flags & hook) == hook) &&
+               !((flags & onGreen) == onGreen))
+            {
+                var bad = ((flags & outOfBounds) == outOfBounds) ? " badly" : "";
+                Console.WriteLine("You hooked{0}: {1} yards offline.", bad, plot.Offline);
+            };
+
+            if (STROKE_NUM > 1)
+            {
+                var prevBall = ScoreCardGetPreviousStroke();
+                var d1 = GetDistance(new Point(prevBall.X, prevBall.Y),
+                                     new Point(holeGeometry.Cup.X, holeGeometry.Cup.Y));
+                var d2 = cupDistance;
+                if (d2 > d1) { w("Too much club."); };
+            };
+
+            if ((flags & inRough) == inRough) { w("You're in the rough."); };
+
+            if ((flags & inSand) == inSand) { w("You're in a sand trap."); };
+
+            if ((flags & onGreen) == onGreen)
+            {
+                var pd = (cupDistance < 4) ? ((cupDistance * 3) + " feet") : (cupDistance + " yards");
+                Console.WriteLine("You're on the green. It's {0} from the pin.", pd);
+            };
+
+            if (((flags & onFairway) == onFairway) ||
+               ((flags & inRough) == inRough))
+            {
+                Console.WriteLine("Shot went {0} yards. It's {1} yards from the cup.", travelDistance, cupDistance);
+            };
+
+            ScoreCardRecordStroke(new Ball(plot.X, plot.Y, 0, GameObjType.BALL));
+
+            BALL = new Ball(plot.X, plot.Y, 0, GameObjType.BALL);
+
+            TeeUp();
+        }
 
 
-          let flags = 0b000000000000;
+        // --------------------------------------------------------------- ReportCurrentScore
+        void ReportCurrentScore()
+        {
+            var par = CourseInfo[HOLE_NUM].Par;
+            if (ScoreCard[HOLE_NUM].Count == par + 1) { w("A bogey. One above par."); };
+            if (ScoreCard[HOLE_NUM].Count == par) { w("Par. Nice."); };
+            if (ScoreCard[HOLE_NUM].Count == (par - 1)) { w("A birdie! One below par."); };
+            if (ScoreCard[HOLE_NUM].Count == (par - 2)) { w("An Eagle! Two below par."); };
 
-          // fore!, only for drivers
-          if((STROKE_NUM == 1) && (clubAmt > 210) && odds(30)){ write(`"...Fore !"`); }
-          
-          
-          // dub
-          if(odds(5)){ flags |= dub; }; // there's always a 5% chance of dubbing it
+            int totalPar = 0;
+            for (var i = 1; i <= HOLE_NUM; i++) { totalPar += CourseInfo[i].Par; };
 
+            w(" ");
+            w("-----------------------------------------------------");            
+            Console.WriteLine(" Total par for {0} hole{1} is: {2}. Your total is: {3}.",
+                              HOLE_NUM,
+                              ((HOLE_NUM > 1) ? "s" : ""), //plural    
+                              totalPar,
+                              ScoreCardGetTotal());
+            w("-----------------------------------------------------");            
+            w(" ");
 
-          // if you're in the rough, or sand, you really should be using a wedge
-          if((isInRough(BALL) || isInHazard(BALL, "sand"))
-             && !(clubIndex == 8 || clubIndex == 9)){
-              if(odds(40)){ flags |= dub; };
-          };
-
-          // trap difficulty
-          if(isInHazard(BALL, "sand") && playerDifficulty == 4){ if(odds(20)){ flags |= dub; }; }
-          
-          // hook/slice
-          // There's 10% chance of a hook or slice;
-          // if it's a known playerDifficulty then increase chance to 30%
-          // if it's a putt & putting is a playerDifficulty increase to 30%
-
-          let randHookSlice = (playerDifficulty == 1 ||
-                               playerDifficulty == 2 ||
-                               (playerDifficulty == 5 && isOnGreen(BALL))) ? odds(30) : odds(10);
-          
-                      
-          if(randHookSlice){
-              if(playerDifficulty == 1){
-                  if(odds(80)){ flags |= hook; }else{ flags |= slice; };
-              }else if(playerDifficulty == 2){
-                  if(odds(80)){ flags |= slice; }else{ flags |= hook; };
-              }else{
-                  if(odds(50)){ flags |= hook; }else{ flags |= slice; };
-              };
-          };
-
-          // beginner's luck !
-          // If handicap is greater than 15, there's a 10% chance of avoiding all errors 
-          if((handicap > 15) && (odds(10))){ flags |= luck; write("Perfect swing!<br>"); };
+            if (HOLE_NUM == 18)
+            {
+                GameOver();
+            }
+            else
+            {
+                Thread.Sleep(2000);
+                NewHole();
+            };
+        }
 
 
-          // ace
-          // there's a 1 in 100 chance of an Ace on a par 3           
-          if(courseInfo[HOLE_NUM][2] == 3 && odds(1) && STROKE_NUM == 1) { flags |= ace; };
+        // --------------------------------------------------------------- FindBall
+        int FindBall(Ball ball, int flags)
+        {
+            if (IsOnFairway(ball) && !IsOnGreen(ball)) { flags |= onFairway; }
+            if (IsOnGreen(ball)) { flags |= onGreen; }
+            if (IsInRough(ball)) { flags |= inRough; }
+            if (IsInHazard(ball, GameObjType.WATER)) { flags |= inWater; }
+            if (IsInHazard(ball, GameObjType.TREES)) { flags |= inTrees; }
+            if (IsInHazard(ball, GameObjType.SAND)) { flags |= inSand; }
+            if (IsOutOfBounds(ball)) { flags |= outOfBounds; }
 
-          
+            if (ball.Y < 0) { flags |= passedCup; }
 
-            distance:
-            If handicap is < 15, there a 50% chance of reaching club average, a 25% of exceeding it,
-            and a 25% of falling short 
-            If handicap is > 15, there's a 25% chance of reaching club average, and 75% chance of
-            falling short
-            The greater the handicap, the more the ball falls short
-            If poor distance is a known playerDifficulty, then reduce distance by 10% 
+            // less than 1 yard, it's in the cup
+            var d = GetDistance(new Point(ball.X, ball.Y),
+                                new Point(holeGeometry.Cup.X, holeGeometry.Cup.Y));
+            if (d < 1) { flags |= inCup; };
 
-let distance;
+            return flags;
+        }
 
-          let rnd = getRandomInclusive(1, 100);              
-          if(handicap < 15){
-              if(rnd <= 25){
-                  distance = clubAmt - (clubAmt * (handicap/100));
-              }else if(rnd > 25 && rnd <= 75){
-                  distance = clubAmt;
-              }else{
-                  distance = clubAmt + (clubAmt * 0.10);
-              };
-          }else{
-              if(rnd <= 75){
-                  distance = clubAmt - (clubAmt * (handicap/100));
-              }else{
-                  distance = clubAmt;                      
-              };
-          };
-          if(playerDifficulty == 3){ if(odds(80)){ distance = distance * 0.10; }; };
-          if(flags & luck){ distance = clubAmt; }
-
-                               
-          // angle
-          // For all strokes, there's a possible "drift" of 4 degrees 
-          // a hooks or slice increases the angle between 5-10 degrees, hook uses negative degrees
-          let angle = getRandomInclusive(0, 4);
-          if(flags & slice){ angle = getRandomInclusive(5, 10); }
-          if(flags & hook ){ angle = 0 - (getRandomInclusive(5, 10)); }          
-          if(flags & luck ){ angle = 0; }
-          
-          let plot = plotBall(BALL, distance, angle);  // calculate a new location
-
-          flags = findBall(plot, flags)
-
-          //console.log(flags.toString(2).padStart(12,"0"));
-
-          interpretResults(plot, flags)
-      }
-
-*/
-
-
-
+        // --------------------------------------------------------------- IsOnFairway
+        bool IsOnFairway(Ball ball)
+        {
+            return IsInRectangle(ball, holeGeometry.Fairway);
+        }
 
         // --------------------------------------------------------------- IsOngreen
         bool IsOnGreen(Ball ball)
         {
-            return GetDistance(ball, holeGeometry.Cup) < holeGeometry.Green.Radius;
+            var d = GetDistance(new Point(ball.X, ball.Y),
+                                new Point(holeGeometry.Cup.X, holeGeometry.Cup.Y));
+            return d < holeGeometry.Green.Radius;
         }
 
-        
         // --------------------------------------------------------------- IsInHazard
         bool IsInHazard(Ball ball, GameObjType hazard)
         {
-
             bool result = false;
             Array.ForEach(holeGeometry.Hazards, (Hazard h) =>
             {
-                if ((GetDistance(ball, h) < h.Radius) && h.Type == hazard) { result = true; };
+                var d = GetDistance(new Point(ball.X, ball.Y), new Point(h.X, h.Y));
+                if ((d < h.Radius) && h.Type == hazard) { result = true; };
             });
             return result;
         }
 
-        
         // --------------------------------------------------------------- IsInRough
-        bool IsInRough(Ball ball){
+        bool IsInRough(Ball ball)
+        {
             return IsInRectangle(ball, holeGeometry.Rough) &&
                 (IsInRectangle(ball, holeGeometry.Fairway) == false);
         }
-        
+
+        // --------------------------------------------------------------- IsOutOfBounds
+        bool IsOutOfBounds(Ball ball)
+        {
+            return (IsOnFairway(ball) == false) && (IsInRough(ball) == false);
+        }
+
 
         // --------------------------------------------------------------- ScoreCard
         void ScoreCardStartNewHole() { ScoreCard.Add(new List<Ball>()); }
 
-        void ScoreCardRecordStroke(Ball ball) { ScoreCard[HOLE_NUM].Add(ball); }
+        void ScoreCardRecordStroke(Ball ball)
+        {
+            var clone = new Ball(ball.X, ball.Y, 0, GameObjType.BALL);
+            ScoreCard[HOLE_NUM].Add(clone);
+        }
 
         Ball ScoreCardGetPreviousStroke()
         {
@@ -468,10 +583,11 @@ let distance;
         void Wait(Action<int> callback)
         {
             w("Press any key to continue.");
-
+            
             ConsoleKeyInfo keyinfo;
             do { keyinfo = Console.ReadKey(true); }
             while (keyinfo.KeyChar < 0);
+            Console.Clear();
             callback(0);
         }
 
@@ -500,22 +616,18 @@ let distance;
         void Quit()
         {
             w("");
-            w("Looks like rain.Goodbye!");
+            w("Looks like rain. Goodbye!");
             w("");
             return;
         }
 
-        /*
 
-      let STROKE_NUM = 0;      
-      let handicap = 0;
-      let playerDifficulty = 0;
-      let holeGeometry;
-      let scoreCard = [[]]; 
-      let BALL = {id:"BALL", x:0, y:0};          
-      let inputCallback = () => {};
-
-        */
+        // --------------------------------------------------------------- GameOver
+        void GameOver()
+        {
+            w("Good game. Let's visit the pro shop...");
+            return;
+        }
 
 
         // YOUR BAG
@@ -682,7 +794,6 @@ let distance;
         };
 
 
-        
         // -------------------------------------------------------- HoleInfo
         class HoleInfo
         {
@@ -774,7 +885,8 @@ let distance;
             public int Y { get; }
             public int Offline { get; }
 
-            public Plot(int x, int y, int offline) {
+            public Plot(int x, int y, int offline)
+            {
                 X = x;
                 Y = y;
                 Offline = offline;
@@ -799,369 +911,46 @@ let distance;
         int ace = 0b10000000000000;
 
 
-
-
         // -------------------------------------------------------- GetDistance
         // distance between 2 points
-        double GetDistance(CircleGameObj o1, CircleGameObj o2)
+        double GetDistance(Point pt1, Point pt2)
         {
-            return Math.Sqrt(Math.Pow((o2.X - o1.X), 2) + Math.Pow((o2.Y - o1.Y), 2));
+            return Math.Sqrt(Math.Pow((pt2.X - pt1.X), 2) + Math.Pow((pt2.Y - pt1.Y), 2));
         }
 
 
         // -------------------------------------------------------- IsInRectangle
-        bool IsInRectangle(CircleGameObj pt, RectGameObj rect) {
+        bool IsInRectangle(CircleGameObj pt, RectGameObj rect)
+        {
             return ((pt.X > rect.X) &&
-                    (pt.X < rect.X + rect.Width) &&                                    
+                    (pt.X < rect.X + rect.Width) &&
                     (pt.Y > rect.Y) &&
                     (pt.Y < rect.Y + rect.Length));
         }
 
         // -------------------------------------------------------- ToRadians
-        double ToRadians (int angle) { return angle * (Math.PI / 180); }
+        double ToRadians(double angle) { return angle * (Math.PI / 180.0); }
 
-        
+
         // -------------------------------------------------------- ToDegrees360
         // radians to 360 degrees
-        double ToDegrees360 (double angle) {
-            double deg = angle * (180 / Math.PI);
-            if (deg < 0.0) {deg += 360.0;}
+        double ToDegrees360(double angle)
+        {
+            double deg = angle * (180.0 / Math.PI);
+            if (deg < 0.0) { deg += 360.0; }
             return deg;
         }
 
-        
-
-        Random RND = new Random();
 
         // -------------------------------------------------------- Odds
         // chance an integer is <= the given argument
         // between 1-100
+        Random RND = new Random();
+
         bool Odds(int x)
         {
-            return RND.Next(1, 100) <= x;
-        }
-
-
-    }
-
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            Golf g = new Golf();
+            return RND.Next(1, 101) <= x;
         }
     }
+
 }
-
-/*
-      
-      // ---------------------------------------------------------------------------------- stroke
-      function stroke(clubAmt, clubIndex){
-
-          STROKE_NUM++;
-
-          let flags = 0b000000000000;
-
-          // fore!, only for drivers
-          if((STROKE_NUM == 1) && (clubAmt > 210) && odds(30)){ write(`"...Fore !"`); }
-          
-          
-          // dub
-          if(odds(5)){ flags |= dub; }; // there's always a 5% chance of dubbing it
-
-
-          // if you're in the rough, or sand, you really should be using a wedge
-          if((isInRough(BALL) || isInHazard(BALL, "sand"))
-             && !(clubIndex == 8 || clubIndex == 9)){
-              if(odds(40)){ flags |= dub; };
-          };
-
-          // trap difficulty
-          if(isInHazard(BALL, "sand") && playerDifficulty == 4){ if(odds(20)){ flags |= dub; }; }
-          
-          // hook/slice
-          // There's 10% chance of a hook or slice;
-          // if it's a known playerDifficulty then increase chance to 30%
-          // if it's a putt & putting is a playerDifficulty increase to 30%
-
-          let randHookSlice = (playerDifficulty == 1 ||
-                               playerDifficulty == 2 ||
-                               (playerDifficulty == 5 && isOnGreen(BALL))) ? odds(30) : odds(10);
-          
-                      
-          if(randHookSlice){
-              if(playerDifficulty == 1){
-                  if(odds(80)){ flags |= hook; }else{ flags |= slice; };
-              }else if(playerDifficulty == 2){
-                  if(odds(80)){ flags |= slice; }else{ flags |= hook; };
-              }else{
-                  if(odds(50)){ flags |= hook; }else{ flags |= slice; };
-              };
-          };
-
-          // beginner's luck !
-          // If handicap is greater than 15, there's a 10% chance of avoiding all errors 
-          if((handicap > 15) && (odds(10))){ flags |= luck; write("Perfect swing!<br>"); };
-
-
-          // ace
-          // there's a 1 in 100 chance of an Ace on a par 3           
-          if(courseInfo[HOLE_NUM][2] == 3 && odds(1) && STROKE_NUM == 1) { flags |= ace; };
-
-          
-
-            distance:
-            If handicap is < 15, there a 50% chance of reaching club average, a 25% of exceeding it,
-            and a 25% of falling short 
-            If handicap is > 15, there's a 25% chance of reaching club average, and 75% chance of
-            falling short
-            The greater the handicap, the more the ball falls short
-            If poor distance is a known playerDifficulty, then reduce distance by 10% 
-
-let distance;
-
-          let rnd = getRandomInclusive(1, 100);              
-          if(handicap < 15){
-              if(rnd <= 25){
-                  distance = clubAmt - (clubAmt * (handicap/100));
-              }else if(rnd > 25 && rnd <= 75){
-                  distance = clubAmt;
-              }else{
-                  distance = clubAmt + (clubAmt * 0.10);
-              };
-          }else{
-              if(rnd <= 75){
-                  distance = clubAmt - (clubAmt * (handicap/100));
-              }else{
-                  distance = clubAmt;                      
-              };
-          };
-          if(playerDifficulty == 3){ if(odds(80)){ distance = distance * 0.10; }; };
-          if(flags & luck){ distance = clubAmt; }
-
-                               
-          // angle
-          // For all strokes, there's a possible "drift" of 4 degrees 
-          // a hooks or slice increases the angle between 5-10 degrees, hook uses negative degrees
-          let angle = getRandomInclusive(0, 4);
-          if(flags & slice){ angle = getRandomInclusive(5, 10); }
-          if(flags & hook ){ angle = 0 - (getRandomInclusive(5, 10)); }          
-          if(flags & luck ){ angle = 0; }
-          
-          let plot = plotBall(BALL, distance, angle);  // calculate a new location
-
-          flags = findBall(plot, flags)
-
-          //console.log(flags.toString(2).padStart(12,"0"));
-
-          interpretResults(plot, flags)
-      }
-
-
-      // ---------------------------------------------------------------------------------- interpretResults
-      function interpretResults(plot, flags){
-
-          let cupDistance = Math.round(getDistance(plot, holeGeometry.cup));
-          let travelDistance = Math.round(getDistance(plot, BALL));
-          
-          write('<br>');
-
-          if(flags & ace){
-              write("Hole in One! You aced it.<br>");
-              scoreCardRecordStroke({id:"BALL", x:0, y:0});
-              reportCurrentScore();              
-              return;
-          };
-
-          if(flags & inTrees){
-              write("Your ball is lost in the trees. Take a penalty stroke.<br>");
-              scoreCardRecordStroke({id:"BALL", x:BALL.x, y:BALL.y});              
-              teeUp();
-              return;
-          };
-
-          if(flags & inWater){
-              let msg = odds(50) ? "Your ball has gone to a watery grave." : "Your ball is lost in the water.";
-              write(`${msg} Take a penalty stroke.<br>`);
-              scoreCardRecordStroke({id:"BALL", x:BALL.x, y:BALL.y});              
-              teeUp();
-              return;
-          };
-
-          if(flags & outOfBounds){
-              write("Out of bounds. Take a penalty stroke.<br>");
-              scoreCardRecordStroke({id:"BALL", x:BALL.x, y:BALL.y});              
-              teeUp();
-              return;
-          };
-
-          if(flags & dub){
-              write("You dubbed it.<br>");
-              scoreCardRecordStroke({id:"BALL", x:BALL.x, y:BALL.y});              
-              teeUp();
-              return;
-          };          
-          
-          if(flags & inCup){
-              let msg = odds(50) ? "You holed it.<br>" : "It's in!<br>";
-              write(msg);
-              scoreCardRecordStroke({id:"BALL", x:plot.x, y:plot.y});
-              reportCurrentScore();
-              return;              
-          };
-
-          if((flags & slice) && !(flags & onGreen)){              
-              let bad = (flags & outOfBounds) ? " badly" : "";
-              write(`You sliced${bad}: ${plot.offLine} yards offline.<br>`);
-          };
-
-          if((flags & hook) && !(flags & onGreen)){
-              let bad = (flags & outOfBounds) ? " badly" : "";
-              write(`You hooked${bad}: ${plot.offLine} yards offline.<br>`);
-          };
-
-          if(STROKE_NUM > 1){
-              let d1 = getDistance(scoreCardGetPreviousStroke(), holeGeometry.cup);
-              let d2 = cupDistance;
-              if(d2 > d1){ write(`Too much club.<br>`); }
-          }
-          
-          if(flags & inRough){
-              write("You're in the rough.<br>");
-          };
-
-          if(flags & inSand){
-              write("You're in a sand trap.<br>");
-          };          
-
-          if(flags & onGreen){
-              let pd = (cupDistance < 4) ? ((cupDistance * 3) + " feet") : (cupDistance + " yards");              
-              write(`You're on the green. It's ${pd} from the pin.<br>`);
-          };
-
-          if((flags & onFairway) || (flags & inRough)){
-              write(`<p>Shot went ${travelDistance} yards. It's ${cupDistance} yards from the cup.</p>`);
-          };                                                
-
-          scoreCardRecordStroke({id:"BALL", x:plot.x, y:plot.y});              
-          BALL = {id:"BALL", x:plot.x, y:plot.y};          
-
-          teeUp();          
-      }
-
-
-      //--------------------------------------------------------------------------- reportCurrentScore
-      function reportCurrentScore(){
-
-          let par = courseInfo[HOLE_NUM][2];
-          if(scoreCard[HOLE_NUM].length == par + 1){ write(`A bogey. One above par.<br>`); }          
-          if(scoreCard[HOLE_NUM].length == par){ write(`Par. Nice.<br>`); }
-          if(scoreCard[HOLE_NUM].length == (par - 1)){ write(`A birdie! One below par.<br>`); }
-          if(scoreCard[HOLE_NUM].length == (par - 2)){ write(`An Eagle! Two below par.<br>`); }                    
-
-          let totalPar = 0;
-          for(var i=1; i <= HOLE_NUM; i++){ totalPar += courseInfo[i][2]; }
-
-          let plural = (HOLE_NUM > 1) ? "s" : "";
-          write(`Total par for ${HOLE_NUM} hole${plural} is: ${totalPar}. Your total is: ${scoreCardGetTotal()}.<br>`);
-          
-          if(HOLE_NUM == 18){
-              gameOver();
-          }else{
-              window.setTimeout(newHole, 2000);
-          };
-      }
-          
-
-      //--------------------------------------------------------------------------- scoreCard
-      function scoreCardStartNewHole(){ scoreCard.push([]); }      
-      function scoreCardRecordStroke(ball){ scoreCard[HOLE_NUM].push(ball); }
-      function scoreCardGetPreviousStroke(){ return scoreCard[HOLE_NUM][scoreCard[HOLE_NUM].length - 1]; }
-      function scoreCardGetTotal(){ let total = 0; scoreCard.forEach((h)=>{ total += h.length;}); return total; }      
-
-      
-      // ---------------------------------------------------------------------------------- plotBall
-      function plotBall(ballPt, strokeDistance, degreesOff){
-
-          let cupVector = {x:0, y:-1}; 
-
-          let radFromCup = Math.atan2(ballPt.y, ballPt.x) - Math.atan2(cupVector.y, cupVector.x);
-          let radFromBall = radFromCup - Math.PI;
-          
-          let hypotenuse = strokeDistance;
-          let adjacent = Math.cos(radFromBall + toRadians(degreesOff)) * hypotenuse;
-          let opposite = Math.sqrt(Math.pow(hypotenuse, 2) - Math.pow(adjacent, 2));
-
-          let newPos;
-          if(toDegrees360(radFromBall + toRadians(degreesOff)) > 180){
-              newPos = {x:ballPt.x - opposite, y:ballPt.y - adjacent};
-          }else{
-              newPos = {x:ballPt.x + opposite, y:ballPt.y - adjacent};
-          }
-
-          return {x:newPos.x, y:newPos.y, offLine:Math.round(opposite)};
-      }
-
-      
-      // ---------------------------------------------------------------------------------- findBall
-      function findBall(ball, flags){
-
-          if (isOnFairway(ball) && !isOnGreen(ball)) { flags |= onFairway; }
-          if (isOnGreen(ball)){ flags |= onGreen; }
-          if (isInRough(ball)){ flags |= inRough; }
-          if (isInHazard(ball, "water")){ flags |= inWater; }
-          if (isInHazard(ball, "trees")){ flags |= inTrees; }
-          if (isInHazard(ball, "sand")){ flags |= inSand; }                    
-          if (isOutOfBounds(ball)){ flags |= outOfBounds; }
-          if (ball.y < 0){ flags |= passedCup; }
-          if (getDistance(ball, holeGeometry.cup) < 1){ flags |= inCup; }          
-
-          return flags;        
-      }
-      
-      function isOnFairway(ball){ return isInRectangle(ball, holeGeometry.fairway); };
-
-      function isOnGreen(ball){ return getDistance(ball, holeGeometry.cup) < holeGeometry.green.radius; };
-
-      function isInRough(ball){
-          return isInRectangle(ball, holeGeometry.rough) && (isInRectangle(ball, holeGeometry.fairway) == false);
-      }
-
-      function isInHazard(ball, hazard){
-
-          let result = false;
-          holeGeometry.hazards.forEach((h) => {
-              if((getDistance(ball, h) < h.radius) && h.type == hazard){ result = true; };
-          });
-          return result;
-      }
-
-      function isOutOfBounds(ball){
-          return (isOnFairway(ball) == false) && (isInRough(ball) == false)
-      }
-
-      
-      // ---------------------------------------------------------------------------------- math helpers
-      function toRadians (angle) { return angle * (Math.PI / 180); }
-      
-      function toDegrees360 (angle) { // radians to 360 degrees
-          let deg = angle * (180 / Math.PI);
-          if (deg < 0.0) {deg += 360.0;}
-          return deg;
-      }
-
-      function getDistance(pt1, pt2) { // distance between 2 points
-          return Math.sqrt(Math.pow((pt2.x - pt1.x),2) + Math.pow((pt2.y - pt1.y),2));
-      }
-
-      function isInRectangle(pt, rect) {
-          return ((pt.x > rect.x) &&
-                  (pt.x < rect.x + rect.width) &&                                    
-                  (pt.y > rect.y) &&
-                  (pt.y < rect.y + rect.length));
-      }
-
-      // random number inclusive of the max and min
-      function getRandomInclusive(min, max) { return Math.floor(Math.random() * (max - min + 1) + min); }
-
- */
