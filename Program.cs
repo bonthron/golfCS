@@ -18,8 +18,10 @@
 // Linux compile:
 // dotnet publish --self-contained -c Release -r linux-x64 /p:PublishSingleFile=true /p:PublishTrimmed=true
 //
+// Windows compile:
+// dotnet publish -r win-x64 -c Release /p:PublishSingleFile=true
+// 
 //
-//        
 // INDEX
 // ----------------- methods
 // constructor
