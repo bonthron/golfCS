@@ -808,6 +808,7 @@ namespace Golf
             w("");
             w("Looks like rain. Goodbye!");
             w("");
+            Wait((z) => { });
             return;
         }
 
@@ -819,7 +820,8 @@ namespace Golf
             w("Good game!");
             w("Your net score is: " + net);            
             w("Let's visit the pro shop...");
-            w(" ");                        
+            w(" ");
+            Wait((z) => { });            
             return;
         }
 
