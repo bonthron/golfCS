@@ -75,7 +75,7 @@
 //  Probabilities are commented in the code. 
 //
 //  note: 'courseInfo', 'clubs', & 'scoreCard' arrays each include an empty object so indexing
-//  can begin at 1.  Like all good programmer we count from zero, but in this context,
+//  can begin at 1. Like all good programmers we count from zero, but in this context,
 //  it's more natural when hole number one is at index one
 //
 //            
@@ -85,7 +85,7 @@
 //     |   |                     |   | 
 //     | r |        =  =         | r | 
 //     | o |     =        =      | o | 
-//     | u |    =          =     | u | 
+//     | u |    =    .     =     | u | 
 //     | g |    =   green  =     | g |  
 //     | h |     =        =      | h | 
 //     |   |        =  =         |   | 
